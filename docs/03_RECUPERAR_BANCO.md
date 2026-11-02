@@ -22,4 +22,18 @@ Se o usuário `condoroute` não existir, pare e confirme os usuários com `SELEC
 
 ## Ambiente novo
 
-Se o volume ainda não existe, execute `powershell -ExecutionPolicy Bypass -File .\setup_windows.ps1` para criar `.env`, depois `docker compose up --build -d`. O MySQL cria automaticamente o usuário e aplica a mesma senha à aplicação.
+Se o volume ainda não existe, use o inicializador correspondente ao seu sistema:
+
+### Windows (CMD)
+
+```bat
+iniciar.cmd
+```
+
+### Linux
+
+```bash
+./iniciar.sh
+```
+
+Os dois scripts criam o `.env` quando necessário e executam `docker compose up --build -d`. Na primeira inicialização, o MySQL cria automaticamente o usuário e aplica à aplicação a mesma senha configurada no `.env`.
