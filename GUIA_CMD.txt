@@ -1,0 +1,11 @@
+CONDOROUTE - WINDOWS 11 + VS CODE + CMD
+
+1. Abra o Docker Desktop.
+2. Extraia o ZIP em uma pasta NOVA.
+3. Abra a pasta no VS Code (terminal CMD).
+4. Digite: iniciar.cmd
+5. Abra: http://localhost:8000
+6. Login: admin@condoroute.local; senha: consultar ADMIN_PASSWORD no .env
+7. Problemas: verificar.cmd
+
+Nao use PowerShell. Nao remova volumes do MySQL antigo.

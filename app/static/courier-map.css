@@ -1,0 +1,14 @@
+/* Leaflet-specific CSS: never apply global img width or max-width to tiles. */
+.public-body .mobile-app{width:100%;max-width:1050px;min-height:100vh;margin:0 auto}
+.public-body .mobile-head{padding:28px 32px 56px}
+.public-body .mobile-content{padding:0 28px 36px;max-width:100%}
+.public-body .courier-map-frame{width:100%;height:min(56vh,470px);min-height:310px;position:relative;isolation:isolate;border-radius:16px;overflow:hidden;border:1px solid #d3e0db;background:#e3eee8}
+.public-body .courier-map{display:block;width:100%;height:100%;min-height:0;position:relative;z-index:0;border:0;border-radius:0;overflow:hidden}
+.public-body .leaflet-container{font:12px/1.5 Inter,system-ui,sans-serif;overflow:hidden;background:#e3eee8}
+.public-body .leaflet-container .leaflet-pane,.public-body .leaflet-container .leaflet-tile-pane,.public-body .leaflet-container .leaflet-map-pane{max-width:none;max-height:none}
+.public-body .leaflet-container .leaflet-tile,.public-body .leaflet-container img,.public-body .leaflet-container svg{max-width:none!important;max-height:none!important;object-fit:initial!important}
+.public-body .leaflet-container .leaflet-tile{width:256px;height:256px;image-rendering:auto}
+.public-body .leaflet-control-container button,.public-body .leaflet-control-container a{box-sizing:content-box}
+.public-body .destination-card{max-width:100%}
+.public-body .navigation-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:640px){.public-body .mobile-app{max-width:480px}.public-body .mobile-head{padding:26px 20px 55px}.public-body .mobile-content{padding:0 16px 28px}.public-body .courier-map-frame{height:355px;min-height:300px}.public-body .navigation-list{grid-template-columns:1fr}}

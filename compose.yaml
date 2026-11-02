@@ -1,0 +1,39 @@
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-condoroute}
+      MYSQL_USER: ${MYSQL_USER:-condoroute}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Configure no .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Configure no .env}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Evita que uma DATABASE_URL antiga desalinhe a senha da aplicacao.
+      DATABASE_URL: ""
+      MYSQL_HOST: db
+      MYSQL_USER: ${MYSQL_USER:-condoroute}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-condoroute}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Configure no .env}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+volumes:
+  mysql_data:
