@@ -1,1 +1,175 @@
-{% extends 'base.html' %}{% block subtitle %}Selecione condomínio, residência e portaria para gerar o acesso do entregador.{% endblock %}{% block body %}<div class="cols"><section class="panel"><h3>Nova orientação de entrega</h3><p class="subheading">O QR abre o CondoRoute com opções de Google Maps, Waze, Apple Mapas e mapa interno.</p><form method="post" action="/links"><input type="hidden" name="csrf_token" value="{{csrf}}"><label>1. Condomínio<select id="condo-select" required>{% for c in condos %}<option value="{{c.id}}">{{c.name}}</option>{% endfor %}</select></label><label>2. Residência de destino<select name="house_id" id="house-select" required>{% for h in houses %}<option value="{{h.id}}" data-condo="{{h.condo_id}}">Quadra {{h.block}} · Casa {{h.number}}</option>{% endfor %}</select></label><label>3. Portaria de origem<select name="gate_id" id="gate-select"><option value="">Usar localização atual do entregador</option>{% for g in gates %}<option value="{{g.id}}" data-condo="{{g.condo_id}}">{{g.name}}</option>{% endfor %}</select></label><div class="warning-box">O endereço correto não garante que o aplicativo externo reconheça as ruas internas.</div><button class="btn full" {% if not houses %}disabled{% endif %}>Gerar QR seguro →</button></form>{% if not houses %}<div class="empty">Cadastre primeiro as residências em <a href="/manage">Condomínios</a>.</div>{% endif %}</section><section class="panel"><h3>QR para o entregador</h3>{% if created_link %}<div class="qrbox"><img src="/qr/{{created_link.token}}.png" alt="QR Code do endereço"><b>QR Code gerado</b><small>Abra a página pública em um endereço acessível ao celular.</small><a class="btn" href="/qr/{{created_link.token}}.png" download="condoroute-qr.png">Baixar QR</a><a target="_blank" rel="noopener" href="{{public_url}}/r/{{created_link.token}}">Abrir página do entregador ↗</a></div>{% else %}<div class="empty"><div class="qr-placeholder">▦</div><b>Pronto para gerar</b><p>Selecione o condomínio e o destino.</p></div>{% endif %}</section></div><section class="panel space"><div class="panelhead"><h3>Links gerados</h3><span class="pill">{{total}} registros · 10 por página</span></div><div class="table-scroll"><table><thead><tr><th>Residência</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead><tbody>{% for link in links %}<tr><td>Casa #{{link.house_id}}</td><td>{{link.created_at.strftime('%d/%m/%Y %H:%M') if link.created_at else '—'}}</td><td><span class="pill {{'good' if link.active else 'warning'}}">{{'Ativo' if link.active else 'Revogado'}}</span></td><td><div class="action-buttons">{% if link.active %}<form method="post" action="/links/{{link.id}}/revoke"><input type="hidden" name="csrf_token" value="{{csrf}}"><button class="btn small danger" onclick="return confirm('Revogar este link?')">Revogar</button></form>{% else %}<form method="post" action="/links/{{link.id}}/reactivate"><input type="hidden" name="csrf_token" value="{{csrf}}"><button class="btn small" onclick="return confirm('Reativar este link?')">Reativar</button></form>{% endif %}<form method="post" action="/links/{{link.id}}/delete"><input type="hidden" name="csrf_token" value="{{csrf}}"><button class="btn small danger" onclick="return confirm('Excluir permanentemente este QR? O registro de auditoria será preservado.')">Excluir</button></form></div></td></tr>{% else %}<tr><td colspan="4">Nenhum link gerado.</td></tr>{% endfor %}</tbody></table></div><nav class="pagination" aria-label="Paginação de links"><a class="btn small" href="/portaria?page={{p-1}}" {% if p<=1 %}aria-disabled="true" tabindex="-1"{% endif %}>Anterior</a><span>Página {{p}} de {{pages}}</span><a class="btn small" href="/portaria?page={{p+1}}" {% if p>=pages %}aria-disabled="true" tabindex="-1"{% endif %}>Próxima</a></nav></section><script>const c=document.getElementById('condo-select'),h=document.getElementById('house-select'),g=document.getElementById('gate-select');function sync(){const id=c.value;[h,g].forEach(s=>{for(const o of s.options){o.hidden=!!o.value&&o.dataset.condo!==id;o.disabled=!!o.value&&o.dataset.condo!==id;if(o.disabled&&o.selected)s.value=''}});if(h.selectedOptions.length&&h.selectedOptions[0].disabled){const first=[...h.options].find(o=>!o.disabled);h.value=first?first.value:''}}if(c)c.addEventListener('change',sync);if(c)sync();</script>{% endblock %}
+{% extends 'base.html' %}
+{% block subtitle %}Selecione condomínio, residência e portaria para gerar o acesso do entregador.{% endblock %}
+{% block body %}
+<div class="cols">
+  <section class="panel">
+    <h3>Nova orientação de entrega</h3>
+    <p class="subheading">O QR abre o CondoRoute com opções de Google Maps, Waze, Apple Mapas e mapa interno.</p>
+    <form method="post" action="/links">
+      <input type="hidden" name="csrf_token" value="{{csrf}}">
+      <label>1. Condomínio
+        <select id="condo-select" required>
+          {% for c in condos %}<option value="{{c.id}}">{{c.name}}</option>{% endfor %}
+        </select>
+      </label>
+      <label>2. Residência de destino
+        <select name="house_id" id="house-select" required>
+          {% for h in houses %}<option value="{{h.id}}" data-condo="{{h.condo_id}}">Quadra {{h.block}} · Casa {{h.number}}</option>{% endfor %}
+        </select>
+      </label>
+      <label>3. Portaria de origem
+        <select name="gate_id" id="gate-select">
+          <option value="">Usar localização atual do entregador</option>
+          {% for g in gates %}<option value="{{g.id}}" data-condo="{{g.condo_id}}">{{g.name}}</option>{% endfor %}
+        </select>
+      </label>
+      <div class="warning-box">O endereço correto não garante que o aplicativo externo reconheça as ruas internas.</div>
+      <button class="btn full" {% if not houses %}disabled{% endif %}>Gerar QR seguro →</button>
+    </form>
+    {% if not houses %}
+    <div class="empty">Cadastre primeiro as residências em <a href="/manage">Condomínios</a>.</div>
+    {% endif %}
+  </section>
+
+  <section class="panel" id="qr">
+    <h3>QR para o entregador</h3>
+    {% if selected %}
+      {% set sel_house = houses_by_id.get(selected.house_id) %}
+      {% set sel_gate = gates_by_id.get(selected.gate_id) if selected.gate_id else none %}
+      {% set share_url = public_url ~ '/r/' ~ selected.token %}
+      <div class="qrbox">
+        <b>{% if sel_house %}Quadra {{sel_house.block}} · Casa {{sel_house.number}}{% else %}Residência não encontrada{% endif %}</b>
+        <small>{{condo_names.get(selected.condo_id, '')}}{% if sel_gate %} · {{sel_gate.name}}{% endif %}</small>
+        {% if selected.active %}
+          <img src="/links/{{selected.id}}/qr.png" alt="QR Code do endereço">
+          <div class="copy-row">
+            <input id="public-link" type="text" readonly value="{{share_url}}" aria-label="Link público do entregador">
+            <button type="button" class="btn small" id="copy-link">Copiar link</button>
+          </div>
+          <small id="copy-msg" role="status" aria-live="polite"></small>
+          <div class="action-buttons">
+            <a class="btn" href="/links/{{selected.id}}/qr.png" download="condoroute-qr-{{selected.id}}.png">Baixar QR</a>
+            <a class="btn small white-outline" target="_blank" rel="noopener" href="{{share_url}}">Abrir página do entregador ↗</a>
+          </div>
+          {% if 'localhost' in public_url or '127.0.0.1' in public_url %}
+          <div class="warning-box">O endereço público configurado é <b>{{public_url}}</b>, que só funciona neste computador. Para o celular do entregador ler o QR, ajuste <code>PUBLIC_BASE_URL</code> para um endereço acessível por ele.</div>
+          {% endif %}
+        {% else %}
+          <div class="warning-box">Este link está revogado: o QR não abre mais a página do entregador. Reative-o para voltar a usá-lo.</div>
+          <form method="post" action="/links/{{selected.id}}/reactivate">
+            <input type="hidden" name="csrf_token" value="{{csrf}}">
+            <button class="btn small" onclick="return confirm('Reativar este link?')">Reativar link</button>
+          </form>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="empty">
+        <div class="qr-placeholder">▦</div>
+        <b>Pronto para gerar</b>
+        <p>Selecione o condomínio e o destino, ou clique em <b>Ver QR</b> em um link da lista abaixo.</p>
+      </div>
+    {% endif %}
+  </section>
+</div>
+
+<section class="panel space">
+  <div class="panelhead"><h3>Links gerados</h3><span class="pill">{{total}} registros · 10 por página</span></div>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Residência</th><th>Portaria</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead>
+      <tbody>
+        {% for link in links %}
+        {% set row_house = houses_by_id.get(link.house_id) %}
+        {% set row_gate = gates_by_id.get(link.gate_id) if link.gate_id else none %}
+        <tr class="{{'selected-row' if selected and selected.id==link.id else ''}}">
+          <td>
+            {% if row_house %}<b>Quadra {{row_house.block}} · Casa {{row_house.number}}</b>{% if not row_house.active %} <span class="pill warning">Residência inativa</span>{% endif %}{% else %}<b>Residência não encontrada</b>{% endif %}
+            {% if user.role=='superadmin' %}<span class="row-sub">{{condo_names.get(link.condo_id, '')}}</span>{% endif %}
+          </td>
+          <td>{{row_gate.name if row_gate else '—'}}</td>
+          <td>{{link.created_at.strftime('%d/%m/%Y %H:%M') if link.created_at else '—'}}</td>
+          <td><span class="pill {{'good' if link.active else 'warning'}}">{{'Ativo' if link.active else 'Revogado'}}</span></td>
+          <td>
+            <div class="action-buttons">
+              <a class="btn small" href="/portaria?link={{link.id}}&amp;page={{p}}#qr">Ver QR</a>
+              {% if link.active %}
+              <form method="post" action="/links/{{link.id}}/revoke">
+                <input type="hidden" name="csrf_token" value="{{csrf}}">
+                <button class="btn small danger" onclick="return confirm('Revogar este link?')">Revogar</button>
+              </form>
+              {% else %}
+              <form method="post" action="/links/{{link.id}}/reactivate">
+                <input type="hidden" name="csrf_token" value="{{csrf}}">
+                <button class="btn small" onclick="return confirm('Reativar este link?')">Reativar</button>
+              </form>
+              {% endif %}
+              <form method="post" action="/links/{{link.id}}/delete">
+                <input type="hidden" name="csrf_token" value="{{csrf}}">
+                <button class="btn small danger" onclick="return confirm('Excluir permanentemente este QR? O registro de auditoria será preservado.')">Excluir</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">Nenhum link gerado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <nav class="pagination" aria-label="Paginação de links">
+    <a class="btn small" href="/portaria?page={{p-1}}" {% if p<=1 %}aria-disabled="true" tabindex="-1"{% endif %}>Anterior</a>
+    <span>Página {{p}} de {{pages}}</span>
+    <a class="btn small" href="/portaria?page={{p+1}}" {% if p>=pages %}aria-disabled="true" tabindex="-1"{% endif %}>Próxima</a>
+  </nav>
+</section>
+
+<script>
+const c = document.getElementById('condo-select'),
+      h = document.getElementById('house-select'),
+      g = document.getElementById('gate-select');
+
+function sync() {
+  const id = c.value;
+  [h, g].forEach(s => {
+    for (const o of s.options) {
+      o.hidden = !!o.value && o.dataset.condo !== id;
+      o.disabled = !!o.value && o.dataset.condo !== id;
+      if (o.disabled && o.selected) s.value = '';
+    }
+  });
+  if (h.selectedOptions.length && h.selectedOptions[0].disabled) {
+    const first = [...h.options].find(o => !o.disabled);
+    h.value = first ? first.value : '';
+  }
+}
+if (c) { c.addEventListener('change', sync); sync(); }
+
+// Tenta a API de área de transferência (exige HTTPS ou localhost); se ela for
+// recusada ou não existir, cai para execCommand; se nada funcionar, deixa o
+// texto selecionado para o usuário copiar com Ctrl+C.
+async function copyText(field) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(field.value);
+      return true;
+    } catch (e) { /* tenta o plano B */ }
+  }
+  field.focus();
+  field.select();
+  try { return document.execCommand('copy'); } catch (e) { return false; }
+}
+
+const copyButton = document.getElementById('copy-link');
+if (copyButton) {
+  copyButton.addEventListener('click', async () => {
+    const field = document.getElementById('public-link'),
+          message = document.getElementById('copy-msg');
+    const copied = await copyText(field);
+    field.select();
+    message.textContent = copied
+      ? 'Link copiado.'
+      : 'Não foi possível copiar automaticamente. Use Ctrl+C no campo selecionado.';
+  });
+}
+</script>
+{% endblock %}

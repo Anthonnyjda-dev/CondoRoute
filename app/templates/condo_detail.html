@@ -1,1 +1,163 @@
-{% extends 'base.html' %}{% block subtitle %}Gerencie as residências e portarias vinculadas a este condomínio.{% endblock %}{% block body %}<p><a href="/manage">← Voltar aos condomínios</a></p><div class="metrics"><div class="metric"><span>Residências</span><strong>{{houses|length}}</strong></div><div class="metric"><span>Portarias</span><strong>{{gates|length}}</strong></div></div><div class="section-grid"><section class="panel"><h3>Cadastrar portaria</h3><form method="post" action="/gates"><input type="hidden" name="csrf_token" value="{{csrf}}"><input type="hidden" name="condo_id" value="{{condo.id}}"><label>Identificação da portaria<input name="name" required placeholder="Entrada principal"></label><div class="formrow"><label>Latitude<input name="lat" type="number" step="any" placeholder="-10.0000000"></label><label>Longitude<input name="lng" type="number" step="any" placeholder="-37.0000000"></label></div><button class="btn">Cadastrar portaria</button></form><div class="stack">{% for g in gates %}<div class="item"><b>{{g.name}}</b><small>{{g.lat if g.lat is not none else 'Sem coordenadas'}}, {{g.lng if g.lng is not none else '—'}}</small></div>{% else %}<p class="subheading">Nenhuma portaria cadastrada.</p>{% endfor %}</div></section><section class="panel"><h3>Cadastrar residência</h3><form method="post" action="/houses"><input type="hidden" name="csrf_token" value="{{csrf}}"><input type="hidden" name="condo_id" value="{{condo.id}}"><div class="formrow"><label>Quadra<input name="block" required maxlength="30" placeholder="A"></label><label>Casa / lote<input name="number" required maxlength="30" placeholder="01"></label></div><div class="formrow"><label>Latitude da entrada<input name="lat" required type="number" step="any" min="-90" max="90"></label><label>Longitude da entrada<input name="lng" required type="number" step="any" min="-180" max="180"></label></div><label>Ponto de referência<input name="reference" maxlength="255" placeholder="Após a praça, à direita"></label><button class="btn">Cadastrar residência</button></form></section></div><section class="panel space"><div class="panelhead"><h3>Residências de {{condo.name}}</h3><span class="pill">{{houses|length}} itens</span></div><div class="table-scroll"><table><thead><tr><th>Quadra</th><th>Casa</th><th>Coordenadas</th><th>Referência</th><th>Ação</th></tr></thead><tbody>{% for h in houses %}<tr><td>{{h.block}}</td><td>{{h.number}}</td><td class="mono">{{h.lat}}, {{h.lng}}</td><td>{{h.reference or '—'}}</td><td><details><summary>Editar</summary><form method="post" action="/houses/{{h.id}}/update" class="mini-form"><input type="hidden" name="csrf_token" value="{{csrf}}"><label>Quadra<input name="block" required value="{{h.block}}"></label><label>Casa<input name="number" required value="{{h.number}}"></label><label>Latitude<input name="lat" type="number" step="any" required value="{{h.lat}}"></label><label>Longitude<input name="lng" type="number" step="any" required value="{{h.lng}}"></label><label>Referência<input name="reference" value="{{h.reference}}"></label><button class="btn">Salvar alterações</button></form></details></td></tr>{% else %}<tr><td colspan="5">Nenhuma residência cadastrada.</td></tr>{% endfor %}</tbody></table></div></section>{% endblock %}
+{% extends 'base.html' %}
+{% block subtitle %}Gerencie as residências e portarias vinculadas a este condomínio.{% endblock %}
+{% block body %}
+{% set can_edit = user.role in ('superadmin', 'admin') %}
+{% set can_create = can_edit and condo.active %}
+<p><a href="/manage">← Voltar aos condomínios</a></p>
+
+{% if not condo.active %}
+<div class="warning-box">Este condomínio está <b>inativo</b>: os links públicos ficam indisponíveis, os usuários dele não conseguem entrar e não é possível cadastrar novos itens. Reative-o para voltar a operar.</div>
+{% endif %}
+
+<div class="metrics">
+  <div class="metric"><span>Residências ativas</span><strong>{{houses|selectattr('active')|list|length}}</strong><small>{{houses|length}} cadastradas</small></div>
+  <div class="metric"><span>Portarias ativas</span><strong>{{gates|selectattr('active')|list|length}}</strong><small>{{gates|length}} cadastradas</small></div>
+  <div class="metric">
+    <span>Situação</span>
+    <strong>{{'Ativo' if condo.active else 'Inativo'}}</strong>
+    {% if user.role=='superadmin' %}
+    <form method="post" action="/condos/{{condo.id}}/active">
+      <input type="hidden" name="csrf_token" value="{{csrf}}">
+      <input type="hidden" name="active" value="{{'0' if condo.active else '1'}}">
+      <button class="btn small {{'danger' if condo.active else ''}}" onclick="return confirm('{{'Desativar este condomínio? Os links públicos deixam de funcionar e seus usuários não conseguem entrar.' if condo.active else 'Reativar este condomínio?'}}')">{{'Desativar condomínio' if condo.active else 'Reativar condomínio'}}</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="section-grid">
+  <section class="panel">
+    <h3>Portarias</h3>
+    {% if can_create %}
+    <form method="post" action="/gates">
+      <input type="hidden" name="csrf_token" value="{{csrf}}">
+      <input type="hidden" name="condo_id" value="{{condo.id}}">
+      <label>Identificação da portaria<input name="name" required maxlength="100" placeholder="Entrada principal"></label>
+      <div class="formrow">
+        <label>Latitude<input name="lat" type="number" step="any" min="-90" max="90" placeholder="-10.0000000"></label>
+        <label>Longitude<input name="lng" type="number" step="any" min="-180" max="180" placeholder="-37.0000000"></label>
+      </div>
+      <button class="btn">Cadastrar portaria</button>
+    </form>
+    {% endif %}
+    <div class="stack">
+      {% for g in gates %}
+      <div class="item {{'' if g.active else 'inactive'}}">
+        <div>
+          <b>{{g.name}}</b>{% if not g.active %} <span class="pill warning">Inativa</span>{% endif %}
+          <small class="row-sub">{{g.lat if g.lat is not none else 'Sem coordenadas'}}, {{g.lng if g.lng is not none else '—'}}</small>
+        </div>
+        {% if can_edit %}
+        <div class="action-buttons">
+          <details>
+            <summary>Editar</summary>
+            <form method="post" action="/gates/{{g.id}}/update" class="mini-form">
+              <input type="hidden" name="csrf_token" value="{{csrf}}">
+              <label>Identificação<input name="name" required maxlength="100" value="{{g.name}}"></label>
+              <label>Latitude<input name="lat" type="number" step="any" min="-90" max="90" value="{{g.lat if g.lat is not none else ''}}"></label>
+              <label>Longitude<input name="lng" type="number" step="any" min="-180" max="180" value="{{g.lng if g.lng is not none else ''}}"></label>
+              <button class="btn small">Salvar alterações</button>
+            </form>
+          </details>
+          {% if g.active or condo.active %}
+          <form method="post" action="/gates/{{g.id}}/active">
+            <input type="hidden" name="csrf_token" value="{{csrf}}">
+            <input type="hidden" name="active" value="{{'0' if g.active else '1'}}">
+            <button class="btn small {{'danger' if g.active else ''}}" onclick="return confirm('{{'Desativar' if g.active else 'Reativar'}} esta portaria?')">{{'Desativar' if g.active else 'Reativar'}}</button>
+          </form>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% else %}
+      <p class="subheading">Nenhuma portaria cadastrada.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <h3>Cadastrar residência</h3>
+    {% if can_create %}
+    <form method="post" action="/houses">
+      <input type="hidden" name="csrf_token" value="{{csrf}}">
+      <input type="hidden" name="condo_id" value="{{condo.id}}">
+      <div class="formrow">
+        <label>Quadra<input name="block" required maxlength="30" placeholder="A"></label>
+        <label>Casa / lote<input name="number" required maxlength="30" placeholder="01"></label>
+      </div>
+      <div class="formrow">
+        <label>Latitude da entrada<input name="lat" required type="number" step="any" min="-90" max="90"></label>
+        <label>Longitude da entrada<input name="lng" required type="number" step="any" min="-180" max="180"></label>
+      </div>
+      <label>Ponto de referência<input name="reference" maxlength="255" placeholder="Após a praça, à direita"></label>
+      <button class="btn">Cadastrar residência</button>
+    </form>
+    {% else %}
+    <p class="subheading">{{'Reative o condomínio para cadastrar residências.' if can_edit else 'Somente administradores cadastram residências.'}}</p>
+    {% endif %}
+  </section>
+</div>
+
+<section class="panel space">
+  <div class="panelhead"><h3>Residências de {{condo.name}}</h3><span class="pill">{{houses|length}} itens</span></div>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Quadra</th><th>Casa</th><th>Status</th><th>Coordenadas</th><th>Referência</th><th>Rota interna</th>{% if can_edit %}<th>Ações</th>{% endif %}</tr></thead>
+      <tbody>
+        {% for h in houses %}
+        <tr class="{{'' if h.active else 'inactive'}}">
+          <td>{{h.block}}</td>
+          <td>{{h.number}}</td>
+          <td><span class="pill {{'good' if h.active else 'warning'}}">{{'Ativa' if h.active else 'Inativa'}}</span></td>
+          <td class="mono">{{h.lat}}, {{h.lng}}</td>
+          <td>{{h.reference or '—'}}</td>
+          <td>
+            {% if routes[h.id] and h.route_verified %}<span class="pill good">Verificada</span>
+            {% elif routes[h.id] %}<span class="pill warning">Não verificada</span>
+            {% else %}<span class="pill">Sem rota</span>{% endif %}
+          </td>
+          {% if can_edit %}
+          <td>
+            <details>
+              <summary>Editar</summary>
+              <form method="post" action="/houses/{{h.id}}/update" class="mini-form">
+                <input type="hidden" name="csrf_token" value="{{csrf}}">
+                <label>Quadra<input name="block" required maxlength="30" value="{{h.block}}"></label>
+                <label>Casa<input name="number" required maxlength="30" value="{{h.number}}"></label>
+                <label>Latitude<input name="lat" type="number" step="any" min="-90" max="90" required value="{{h.lat}}"></label>
+                <label>Longitude<input name="lng" type="number" step="any" min="-180" max="180" required value="{{h.lng}}"></label>
+                <label>Referência<input name="reference" maxlength="255" value="{{h.reference}}"></label>
+                <p class="subheading">Mudar as coordenadas remove a verificação da rota.</p>
+                <button class="btn small">Salvar alterações</button>
+              </form>
+            </details>
+            <details>
+              <summary>Rota interna</summary>
+              <form method="post" action="/houses/{{h.id}}/route" class="mini-form">
+                <input type="hidden" name="csrf_token" value="{{csrf}}">
+                <label>Pontos do percurso, da portaria até a casa (um por linha: latitude, longitude)
+                  <textarea name="geometry" rows="6" placeholder="-10.7001000, -37.4101000&#10;-10.7012942, -37.4131006">{{routes[h.id]}}</textarea>
+                </label>
+                <label class="check"><input type="checkbox" name="verified" value="1" {{'checked' if h.route_verified else ''}}> Percurso conferido em campo</label>
+                <p class="subheading">O entregador só vê "percurso verificado" com o campo acima marcado. Deixe a lista vazia para remover a rota.</p>
+                <button class="btn small">Salvar rota</button>
+              </form>
+            </details>
+            {% if h.active or condo.active %}
+            <form method="post" action="/houses/{{h.id}}/active">
+              <input type="hidden" name="csrf_token" value="{{csrf}}">
+              <input type="hidden" name="active" value="{{'0' if h.active else '1'}}">
+              <button class="btn small {{'danger' if h.active else ''}}" onclick="return confirm('{{'Desativar esta residência? Os QR Codes dela deixam de abrir.' if h.active else 'Reativar esta residência?'}}')">{{'Desativar' if h.active else 'Reativar'}}</button>
+            </form>
+            {% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% else %}
+        <tr><td colspan="{{7 if can_edit else 6}}">Nenhuma residência cadastrada.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

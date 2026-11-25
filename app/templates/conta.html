@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block subtitle %}Seus dados de acesso e a troca de senha.{% endblock %}
+{% block body %}
+<div class="cols">
+  <section class="panel">
+    <h3>Trocar senha</h3>
+    {% if error %}<div class="alert" role="alert">{{error}}</div>{% endif %}
+    <form method="post" action="/conta/senha">
+      <input type="hidden" name="csrf_token" value="{{csrf}}">
+      <label>Senha atual<input type="password" name="current_password" required autocomplete="current-password"></label>
+      <label>Nova senha (mínimo 12 caracteres)<input type="password" name="new_password" required minlength="12" autocomplete="new-password"></label>
+      <label>Confirmar nova senha<input type="password" name="confirm_password" required minlength="12" autocomplete="new-password"></label>
+      <button class="btn">Salvar nova senha</button>
+    </form>
+    <p class="subheading">Sessões abertas em outros aparelhos continuam válidas até expirarem ou o usuário sair.</p>
+  </section>
+  <section class="panel">
+    <h3>Seus dados</h3>
+    <div class="stack">
+      <div class="item"><span>Nome</span><b>{{user.name}}</b></div>
+      <div class="item"><span>E-mail</span><b>{{user.email}}</b></div>
+      <div class="item"><span>Perfil</span><b>{{user.role}}</b></div>
+    </div>
+  </section>
+</div>
+{% endblock %}
