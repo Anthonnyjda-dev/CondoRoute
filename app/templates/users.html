@@ -1,1 +1,72 @@
-{% extends 'base.html' %}{% block subtitle %}Controle os acessos à administração de cada condomínio.{% endblock %}{% block body %}<section class="panel"><h3>Criar usuário</h3><form method="post" action="/users"><input type="hidden" name="csrf_token" value="{{csrf}}"><div class="formrow"><label>Condomínio<select name="condo_id" required>{% for c in condos %}<option value="{{c.id}}">{{c.name}}</option>{% endfor %}</select></label><label>Nome<input name="name" required></label><label>E-mail<input type="email" name="email" required></label></div><div class="formrow"><label>Senha inicial (mínimo 12 caracteres)<input name="password" type="password" required minlength="12"></label><label>Perfil<select name="role">{% if user.role=='superadmin' %}<option value="admin">Administrador</option>{% endif %}<option value="porter">Porteiro</option></select></label></div><button class="btn" {% if not condos %}disabled{% endif %}>Criar usuário</button></form></section><section class="panel space"><h3>Usuários cadastrados</h3><div class="table-scroll"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Condomínio</th></tr></thead><tbody>{% for member in users %}<tr><td>{{member.name}}</td><td>{{member.email}}</td><td>{{member.role}}</td><td>{{member.condo_id or 'Global'}}</td></tr>{% else %}<tr><td colspan="4">Nenhum usuário cadastrado.</td></tr>{% endfor %}</tbody></table></div></section>{% endblock %}
+{% extends 'base.html' %}
+{% block subtitle %}Controle os acessos à administração de cada condomínio.{% endblock %}
+{% block body %}
+<section class="panel">
+  <h3>Criar usuário</h3>
+  <form method="post" action="/users">
+    <input type="hidden" name="csrf_token" value="{{csrf}}">
+    <div class="formrow">
+      <label>Condomínio
+        <select name="condo_id" required>
+          {% for c in condos %}<option value="{{c.id}}">{{c.name}}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Nome<input name="name" required></label>
+      <label>E-mail<input type="email" name="email" required></label>
+    </div>
+    <div class="formrow">
+      <label>Senha inicial (mínimo 12 caracteres)<input name="password" type="password" required minlength="12" autocomplete="new-password"></label>
+      <label>Perfil
+        <select name="role">
+          {% if user.role=='superadmin' %}<option value="admin">Administrador</option>{% endif %}
+          <option value="porter">Porteiro</option>
+        </select>
+      </label>
+    </div>
+    <button class="btn" {% if not condos %}disabled{% endif %}>Criar usuário</button>
+  </form>
+</section>
+
+<section class="panel space">
+  <h3>Usuários cadastrados</h3>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Condomínio</th><th>Status</th><th>Ações</th></tr></thead>
+      <tbody>
+        {% for member in users %}
+        <tr class="{{'' if member.active else 'inactive'}}">
+          <td>{{member.name}}{% if member.id==user.id %} <span class="pill">você</span>{% endif %}</td>
+          <td>{{member.email}}</td>
+          <td>{{member.role}}</td>
+          <td>{{condo_names.get(member.condo_id) or 'Global'}}</td>
+          <td><span class="pill {{'good' if member.active else 'warning'}}">{{'Ativo' if member.active else 'Inativo'}}</span></td>
+          <td>
+            {% if member.id in manageable %}
+            <div class="action-buttons">
+              <form method="post" action="/users/{{member.id}}/active">
+                <input type="hidden" name="csrf_token" value="{{csrf}}">
+                <input type="hidden" name="active" value="{{'0' if member.active else '1'}}">
+                <button class="btn small {{'danger' if member.active else ''}}" onclick="return confirm('{{'Desativar' if member.active else 'Reativar'}} este usuário?')">{{'Desativar' if member.active else 'Reativar'}}</button>
+              </form>
+              <details>
+                <summary>Redefinir senha</summary>
+                <form method="post" action="/users/{{member.id}}/password" class="mini-form">
+                  <input type="hidden" name="csrf_token" value="{{csrf}}">
+                  <label>Nova senha (mínimo 12 caracteres)<input type="password" name="password" required minlength="12" autocomplete="new-password"></label>
+                  <button class="btn small" onclick="return confirm('Redefinir a senha deste usuário?')">Salvar senha</button>
+                </form>
+              </details>
+            </div>
+            {% elif member.id==user.id %}
+            <a href="/conta">Minha conta</a>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">Nenhum usuário cadastrado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
